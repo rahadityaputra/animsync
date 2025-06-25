@@ -1,41 +1,46 @@
-'use client';
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import FormInput from './FormInput.';
-import Button from './Button.';
+"use client";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import FormInput from "./FormInput.";
+import Button from "./Button.";
 
 const ResetPasswordForm = () => {
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
   const searchParams = useSearchParams();
+  const token = searchParams.get("token"); // Ambil token dari URL
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    if (!token) {
+      setError("Token tidak valid!");
+      return;
+    }
+    setError("");
     setSuccess(false);
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const password = formData.get('password') as string;
-    const confirmPassword = formData.get('confirmPassword') as string;
+    const password = formData.get("password") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
 
     try {
       // Validasi password
       if (password !== confirmPassword) {
-        throw new Error('Password tidak cocok');
+        throw new Error("Password tidak cocok");
       }
 
       if (password.length < 8) {
-        throw new Error('Password minimal 8 karakter');
+        throw new Error("Password minimal 8 karakter");
       }
 
       // Dapatkan access_token dari URL
-      const token = searchParams.get('token');
-      if (!token) throw new Error('Token tidak valid');
+      const token = searchParams.get("token");
+      if (!token) throw new Error("Token tidak valid");
 
       // Reset password
       const { error: resetError } = await supabase.auth.updateUser({
@@ -45,14 +50,14 @@ const ResetPasswordForm = () => {
       if (resetError) throw resetError;
 
       setSuccess(true);
-      setTimeout(() => router.push('/login'), 2000);
+      setTimeout(() => router.push("/login"), 2000);
     } catch (err) {
       setError(
         err instanceof Error
-          ? err.message.includes('invalid token')
-            ? 'Link reset password tidak valid atau kadaluarsa'
+          ? err.message.includes("invalid token")
+            ? "Link reset password tidak valid atau kadaluarsa"
             : err.message
-          : 'Gagal reset password'
+          : "Gagal reset password"
       );
     } finally {
       setLoading(false);
@@ -62,9 +67,7 @@ const ResetPasswordForm = () => {
   return (
     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
       {error && (
-        <div className="text-red-500 text-sm text-center mb-4">
-          {error}
-        </div>
+        <div className="text-red-500 text-sm text-center mb-4">{error}</div>
       )}
       {success && (
         <div className="text-green-500 text-sm text-center mb-4">
@@ -96,7 +99,7 @@ const ResetPasswordForm = () => {
 
       <div>
         <Button type="submit" fullWidth disabled={loading}>
-          {loading ? 'Memproses...' : 'Reset Password'}
+          {loading ? "Memproses..." : "Reset Password"}
         </Button>
       </div>
     </form>
