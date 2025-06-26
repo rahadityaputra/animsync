@@ -14,67 +14,68 @@ const LoginForm = () => {
   const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setError("");
-  setLoading(true);
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-  try {
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const rememberMe = formData.get("remember-me") === "on";
+    try {
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get("email") as string;
+      const password = formData.get("password") as string;
+      const rememberMe = formData.get("remember-me") === "on";
 
-    // 1. Login via Auth
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+      // 1. Login via Auth
+      const { data, error: authError } = await supabase.auth.signInWithPassword(
+        {
+          email,
+          password,
+        }
+      );
 
-    if (authError) throw authError;
+      if (authError) throw authError;
 
-    // 2. Handle "Remember Me" (simpan session di cookies)
-    if (rememberMe && data.session) {
-      const { error: cookieError } = await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      });
-      if (cookieError) throw cookieError;
-    }
-
-    // 3. Update last_sign_in_at (opsional)
-    if (data.user) {
-      await supabase
-        .from("users")
-        .update({ last_sign_in_at: new Date().toISOString() })
-        .eq("id", data.user.id);
-    }
-
-    // 4. Pastikan session dan user valid sebelum redirect
-    if (data.user && data.session) {
-      router.push("/dashboard");
-    } else {
-      throw new Error("Sesi login tidak valid.");
-    }
-  } catch (err) {
-    let errorMessage = "Login gagal. Silakan coba lagi.";
-
-    if (err instanceof Error) {
-      if (err.message.includes("Invalid login credentials")) {
-        errorMessage = "Email atau password salah.";
-      } else if (err.message.includes("Email not confirmed")) {
-        errorMessage = "Email belum dikonfirmasi. Cek inbox Anda.";
-      } else if (err.message.includes("Too many requests")) {
-        errorMessage = "Terlalu banyak percobaan. Tunggu beberapa saat.";
-      } else {
-        errorMessage = err.message;
+      // 2. Handle "Remember Me" (simpan session di cookies)
+      if (rememberMe && data.session) {
+        const { error: cookieError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+        if (cookieError) throw cookieError;
       }
-    }
 
-    setError(errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+      // 3. Update last_sign_in_at (opsional)
+      if (data.user) {
+        await supabase
+          .from("users")
+          .update({ last_sign_in_at: new Date().toISOString() })
+          .eq("id", data.user.id);
+      }
+
+      // 4. Redirect dengan delay
+      setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh(); // Memastikan session terupdate
+      }, 100);
+    } catch (err) {
+      let errorMessage = "Login gagal. Silakan coba lagi.";
+
+      if (err instanceof Error) {
+        if (err.message.includes("Invalid login credentials")) {
+          errorMessage = "Email atau password salah.";
+        } else if (err.message.includes("Email not confirmed")) {
+          errorMessage = "Email belum dikonfirmasi. Cek inbox Anda.";
+        } else if (err.message.includes("Too many requests")) {
+          errorMessage = "Terlalu banyak percobaan. Tunggu beberapa saat.";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
