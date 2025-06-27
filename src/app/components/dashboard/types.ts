@@ -26,3 +26,4 @@ export type Activity = {
   action: string;
   created_at: string;
 };
+

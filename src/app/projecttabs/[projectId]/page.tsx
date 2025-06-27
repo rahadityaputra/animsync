@@ -1,58 +1,78 @@
+// app/projecttabs/[projectId]/page.tsx
 "use client";
+import { use } from "react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import ProjectDetail from "@/app/components/projrcttabs/ProjectDetail";
+import ProjectDetail from "@/app/components/projecttabs/ProjectDetail";
 import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
+import { useRouter } from "next/navigation";
+import ErrorBoundary from "@/app/components/ErrorBoundary";
 
-type Project = {
+interface Project {
   id: string;
   name: string;
-  status: "pending" | "rendering" | "completed";
+  state: "pending" | "rendering" | "completed";
   file_url?: string;
   description?: string;
+  user_id?: string;
   created_at?: string;
-};
+}
 
 export default function ProjectPage({
   params,
 }: {
   params: { projectId: string };
 }) {
-  const supabase = createClient();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const supabase = createClient();
+  const router = useRouter();
+  const { projectId } = use(params);
 
   useEffect(() => {
-    const fetchProject = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const { data, error: supabaseError } = await supabase
+        // Check auth first
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (authError || !user) {
+          router.push("/login");
+          return;
+        }
+
+        // Then fetch project
+        const { data, error: fetchError } = await supabase
           .from("projects")
           .select("*")
           .eq("id", params.projectId)
+          .eq("user_id", user.id)
           .single();
 
-        if (supabaseError) throw supabaseError;
+        if (fetchError) throw fetchError;
         if (!data) throw new Error("Project not found");
 
-        setProject(data as Project);
+        setProject(data);
       } catch (err) {
         console.error("Error fetching project:", err);
         setError(err instanceof Error ? err.message : "Failed to load project");
+        router.push("/dashboard");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProject();
-  }, [params.projectId, supabase]);
+    fetchData();
+  }, [params.projectId, router, supabase]);
 
   if (loading) return <LoadingSpinner fullPage />;
 
-  if (error)
+  if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[300px]">
         <div className="text-red-500 mb-4">{error}</div>
@@ -64,23 +84,25 @@ export default function ProjectPage({
         </button>
       </div>
     );
+  }
 
-  if (!project)
+  if (!project) {
     return (
-      <div className="flex flex-col items-center justify-center  bg-gray-100 min-h-[300px]">
+      <div className="flex flex-col items-center justify-center min-h-[300px]">
         <p className="text-gray-500 mb-4">Project not found</p>
         <button
-          onClick={() => (window.location.href = "/projects")}
+          onClick={() => router.push("/dashboard")}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
-          Back to Projects
+          Back to Dashboard
         </button>
       </div>
     );
+  }
 
   return (
-    <div className="container mx-auto  bg-gray-500 px-4 py-8">
+    <ErrorBoundary>
       <ProjectDetail project={project} />
-    </div>
+    </ErrorBoundary>
   );
 }

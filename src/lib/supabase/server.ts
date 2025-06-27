@@ -1,26 +1,33 @@
+// src/lib/supabase/server.ts
+'use server';
+
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-export const createClient = () => {
-  // Type assertion untuk mengatasi masalah tipe
-  const cookieStore = cookies() as unknown as {
-    get: (name: string) => { value: string } | undefined;
-    set: (name: string, value: string, options?: CookieOptions) => void;
-  };
+export const createClient = async () => {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        async get(name: string) {
+          return (await cookieStore.get(name))?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set(name, value, options);
+        async set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            console.error('Error setting cookie:', error);
+          }
         },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set(name, '', options);
+        async remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch (error) {
+            console.error('Error removing cookie:', error);
+          }
         },
       },
     }

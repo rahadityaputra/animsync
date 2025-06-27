@@ -5,9 +5,8 @@ export type Project = {
   file_url?: string;
   description?: string;
   created_at?: string;
-  scenes?: Scene[]; // Tambahkan ini
-  collaborators?: Collaborator[]; // Tambahkan ini
-  user_id?: string;
+  scenes?: Scene[];
+  collaborators?: Collaborator[];
 };
 
 export type Scene = {
@@ -21,7 +20,7 @@ export type Collaborator = {
   id: string;
   name: string;
   email: string;
-  status: 'online' | 'offline';
+  status: "online" | "offline";
   avatar?: string;
-  role?: 'viewer' | 'editor' | 'admin';
+  role?: "viewer" | "editor" | "admin";
 };
