@@ -9,14 +9,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${requestUrl.origin}/login?error=invalid_code`);
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
-    // 1. Tukar code untuk session
     const { error: authError } = await supabase.auth.exchangeCodeForSession(code);
     if (authError) throw authError;
 
-    // 2. Update status verifikasi
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase

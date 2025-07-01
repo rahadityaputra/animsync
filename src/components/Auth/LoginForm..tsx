@@ -24,7 +24,6 @@ const LoginForm = () => {
       const password = formData.get("password") as string;
       const rememberMe = formData.get("remember-me") === "on";
 
-      // 1. Login via Auth
       const { data, error: authError } = await supabase.auth.signInWithPassword(
         {
           email,
@@ -34,7 +33,6 @@ const LoginForm = () => {
 
       if (authError) throw authError;
 
-      // 2. Handle "Remember Me" (simpan session di cookies)
       if (rememberMe && data.session) {
         const { error: cookieError } = await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -51,10 +49,9 @@ const LoginForm = () => {
           .eq("id", data.user.id);
       }
 
-      // 4. Redirect dengan delay
       setTimeout(() => {
         router.push("/dashboard");
-        router.refresh(); // Memastikan session terupdate
+        router.refresh();
       }, 100);
     } catch (err) {
       let errorMessage = "Login gagal. Silakan coba lagi.";

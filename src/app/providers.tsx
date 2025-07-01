@@ -33,14 +33,14 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (!mounted) return;
-        
+
         if (error) throw error;
-        
+
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (!session && !window.location.pathname.includes('/login')) {
           setTimeout(() => router.push('/login'), 100);
         }
@@ -54,10 +54,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     const handleAuthChange = async (event: string, session: Session | null) => {
       if (!mounted) return;
-      
+
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (!session && !window.location.pathname.includes('/login')) {
         setTimeout(() => router.push('/login'), 100);
       }
@@ -68,7 +68,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
     return () => {
-      mounted = false;
+      mounted = false
       subscription?.unsubscribe();
     };
   }, [router, supabase.auth]);
