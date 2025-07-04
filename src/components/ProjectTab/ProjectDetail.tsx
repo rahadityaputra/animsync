@@ -1,11 +1,10 @@
-"use client";
-import { useEffect, useState } from "react";
+"use client"
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ModelEditor } from "../Editor/ModelEditor";
 import { SceneList } from "./SceneList";
 import { CommentSection } from "./CommentSection";
 import { CollaboratorList } from "./CollaboratorList";
-import { createClient } from "@/lib/supabase/server";
 
 type Project = {
   id: string;
@@ -14,6 +13,8 @@ type Project = {
   file_url?: string;
   description?: string;
   created_at?: string;
+  scenes?: Scene[];
+  collaborators?: Collaborator[]
 };
 
 type Scene = {
@@ -33,7 +34,6 @@ export default function ProjectDetail({ project }: { project: Project }) {
   const [showProjectTabs, setShowProjectTabs] = useState(false);
   const [showToolsPanel, setShowToolsPanel] = useState(true);
   const router = useRouter();
-  const supabase = createClient();
   const [scenes, setScenes] = useState<Scene[]>(
     project.scenes || [
       { id: "1", name: "Scene 1" },
@@ -41,17 +41,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
       { id: "3", name: "Scene 3" },
     ]
   );
-  useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-      }
-    };
-    checkAuth();
-  }, [router, supabase]);
+
   const [collaborators, setCollaborators] = useState<Collaborator[]>(
     project.collaborators || [
       { id: "1", name: "User 1", email: "user1@example.com", status: "online" },
@@ -119,14 +109,9 @@ export default function ProjectDetail({ project }: { project: Project }) {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 overflow-hidden">
-      {" "}
-      {/* Background gelap */}
-      {/* Main Editor Area */}
       <div className="flex-1 relative bg-gray-800 w-full h-full">
-        {" "}
-        {/* Warna editor area lebih gelap */}
         <button
-          onClick={() => router.push("/dashboard")} // Sesuaikan dengan route dashboard Anda
+          onClick={() => router.push("/dashboard")}
           className="absolute top-4 left-4 z-50 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center"
         >
           <svg
@@ -144,26 +129,21 @@ export default function ProjectDetail({ project }: { project: Project }) {
           Kembali ke Dashboard
         </button>
         <ModelEditor modelUrl={project.file_url} />
-        {/* Floating Toggle Button for Tools Panel (Left) */}
         <button
           onClick={() => setShowToolsPanel(!showToolsPanel)}
-          className={`absolute top-1/2 left-0 z-50 bg-gray-700 hover:bg-gray-600 text-gray-200 p-2 rounded-r-lg shadow-lg transition-colors transform -translate-y-1/2 ${
-            showToolsPanel ? "translate-x-0" : "translate-x-0"
-          }`}
+          className={`absolute top-1/2 left-0 z-50 bg-gray-700 hover:bg-gray-600 text-gray-200 p-2 rounded-r-lg shadow-lg transition-colors transform -translate-y-1/2 ${showToolsPanel ? "translate-x-0" : "translate-x-0"
+            }`}
         >
           {showToolsPanel ? "◀" : "▶"}
         </button>
-        {/* Floating Toggle Button for Project Tabs (Right) */}
         <button
           onClick={() => setShowProjectTabs(!showProjectTabs)}
-          className={`absolute top-1/2 right-0 z-50 bg-gray-700 hover:bg-gray-600 text-gray-200 p-2 rounded-l-lg shadow-lg transition-colors transform -translate-y-1/2 ${
-            showProjectTabs ? "translate-x-0" : "translate-x-0"
-          }`}
+          className={`absolute top-1/2 right-0 z-50 bg-gray-700 hover:bg-gray-600 text-gray-200 p-2 rounded-l-lg shadow-lg transition-colors transform -translate-y-1/2 ${showProjectTabs ? "translate-x-0" : "translate-x-0"
+            }`}
         >
           {showProjectTabs ? "▶" : "◀"}
         </button>
       </div>
-      {/* Tools Panel (Left Side) - Dark Theme */}
       <div
         className={`
         fixed top-0 left-0 h-full w-64 bg-gray-800 shadow-xl z-40
@@ -172,8 +152,6 @@ export default function ProjectDetail({ project }: { project: Project }) {
       `}
       >
         <div className="p-4 h-full text-gray-200">
-          {" "}
-          {/* Text warna terang */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Editor Tools</h2>
             <button
@@ -216,7 +194,6 @@ export default function ProjectDetail({ project }: { project: Project }) {
           </div>
         </div>
       </div>
-      {/* Project Tabs Panel (Right Side) - Dark Theme */}
       <div
         className={`
         fixed top-0 right-0 h-full w-96 bg-gray-800 shadow-xl z-40
@@ -226,7 +203,6 @@ export default function ProjectDetail({ project }: { project: Project }) {
       >
         <div className="p-4 h-full flex flex-col text-gray-200">
           {" "}
-          {/* Text warna terang */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Project Tools</h2>
             <button
@@ -236,37 +212,31 @@ export default function ProjectDetail({ project }: { project: Project }) {
               ✕
             </button>
           </div>
-          {/* Tabs Navigation - Dark Theme */}
           <div className="border-b border-gray-700 mb-4">
-            {" "}
-            {/* Border lebih gelap */}
             <nav className="flex space-x-4">
               <button
-                className={`pb-2 px-1 font-medium text-sm border-b-2 ${
-                  activeTab === "scenes"
-                    ? "border-blue-400 text-blue-400"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
-                }`}
+                className={`pb-2 px-1 font-medium text-sm border-b-2 ${activeTab === "scenes"
+                  ? "border-blue-400 text-blue-400"
+                  : "border-transparent text-gray-400 hover:text-gray-200"
+                  }`}
                 onClick={() => setActiveTab("scenes")}
               >
                 Scenes
               </button>
               <button
-                className={`pb-2 px-1 font-medium text-sm border-b-2 ${
-                  activeTab === "comments"
-                    ? "border-blue-400 text-blue-400"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
-                }`}
+                className={`pb-2 px-1 font-medium text-sm border-b-2 ${activeTab === "comments"
+                  ? "border-blue-400 text-blue-400"
+                  : "border-transparent text-gray-400 hover:text-gray-200"
+                  }`}
                 onClick={() => setActiveTab("comments")}
               >
                 Comments
               </button>
               <button
-                className={`pb-2 px-1 font-medium text-sm border-b-2 ${
-                  activeTab === "collaborators"
-                    ? "border-blue-400 text-blue-400"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
-                }`}
+                className={`pb-2 px-1 font-medium text-sm border-b-2 ${activeTab === "collaborators"
+                  ? "border-blue-400 text-blue-400"
+                  : "border-transparent text-gray-400 hover:text-gray-200"
+                  }`}
                 onClick={() => setActiveTab("collaborators")}
               >
                 Collaborators
@@ -301,10 +271,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
               />
             )}
           </div>
-          {/* Render Button - Dark Theme */}
           <div className="pt-4 border-t border-gray-700">
-            {" "}
-            {/* Border lebih gelap */}
             <button
               onClick={startRender}
               className="w-full py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"

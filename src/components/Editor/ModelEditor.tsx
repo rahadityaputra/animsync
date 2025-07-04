@@ -1,4 +1,3 @@
-// components/Editor/ModelEditor.tsx
 "use client";
 import { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
@@ -11,14 +10,14 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { createClient } from "@/lib/supabase/client";
 
 type ModelEditorProps = {
-  modelUrl: string | null;
+  modelUrl: string | undefined;
   onModelImport?: (file: File) => void;
 };
 
 async function convertToGLB(file: File): Promise<Blob> {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   try {
     const response = await fetch('/api/convert-to-glb', {
       method: 'POST',
@@ -27,12 +26,12 @@ async function convertToGLB(file: File): Promise<Blob> {
         'Accept': 'model/gltf-binary'
       }
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
       throw new Error(errorData?.error || `Conversion failed: ${response.statusText}`);
     }
-    
+
     return await response.blob();
   } catch (error) {
     console.error('Conversion error:', error);
@@ -41,7 +40,6 @@ async function convertToGLB(file: File): Promise<Blob> {
 }
 
 export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
-  // Refs
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene>(new THREE.Scene());
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
@@ -50,8 +48,7 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
   const transformControlsRef = useRef<TransformControls>(null);
   const currentModelRef = useRef<THREE.Group>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // State
+
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +62,7 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
   const [showHelpers, setShowHelpers] = useState(true);
   const [availableSkins, setAvailableSkins] = useState<string[]>([]);
   const [currentSkin, setCurrentSkin] = useState<string | null>(null);
-  
+
   const supabase = createClient();
 
   // Initialize Three.js scene
@@ -87,7 +84,7 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
     cameraRef.current = camera;
 
     // Renderer with tone mapping for better colors
-    const renderer = new THREE.WebGLRenderer({ 
+    const renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance"
     });
@@ -112,7 +109,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
       orbitControls.enabled = !event.value;
     });
     transformControlsRef.current = transformControls;
-    scene.add(transformControls);
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x404040);
@@ -142,7 +138,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
 
     mountRef.current.appendChild(renderer.domElement);
 
-    // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
       orbitControls.update();
@@ -150,7 +145,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
     };
     animate();
 
-    // Cleanup
     return () => {
       if (mountRef.current?.contains(renderer.domElement)) {
         mountRef.current.removeChild(renderer.domElement);
@@ -158,56 +152,52 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
     };
   }, []);
 
-  // Load model when URL changes
   useEffect(() => {
     const loadModel = async () => {
       if (!modelUrl) {
         setLoading(false);
         return;
       }
-      
+
       setLoading(true);
       setError(null);
 
       try {
-        // Clear previous model
         if (currentModelRef.current) {
           sceneRef.current.remove(currentModelRef.current);
           currentModelRef.current = null;
         }
+        console.log(modelUrl);
 
-        // Parse Supabase storage URL
         const url = new URL(modelUrl);
         const pathParts = url.pathname.split('/');
-        const bucket = pathParts[3];
-        const filePath = pathParts.slice(5).join('/');
-        const fileExt = filePath.split('.').pop()?.toLowerCase();
+        const bucket = pathParts[5];
+        console.log(bucket);
 
-        // Download file from Supabase storage
+        const filePath = pathParts.slice(6).join('/');
+        console.log(filePath);
+
         const { data: fileBlob, error: downloadError } = await supabase.storage
           .from(bucket)
           .download(filePath);
 
         if (downloadError || !fileBlob) {
-          throw new Error(downloadError?.message || "Failed to download file");
+          console.log(downloadError);
+
+          throw new Error("Failed to download file");
         }
 
-        // Create object URL from blob
         const objectUrl = URL.createObjectURL(fileBlob);
-        const model = await loadModelFile(objectUrl, fileExt);
-        URL.revokeObjectURL(objectUrl); // Clean up
+        const model = await loadModelFile(objectUrl);
+        URL.revokeObjectURL(objectUrl);
 
-        // Center and scale model
         centerAndScaleModel(model);
 
-        // Add to scene and store reference
         sceneRef.current.add(model);
         currentModelRef.current = model;
 
-        // Apply initial material settings
         updateMaterialSettings();
 
-        // Load available skins
         loadAvailableSkins(model);
 
       } catch (err) {
@@ -225,7 +215,7 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
   // Load available skins from model
   const loadAvailableSkins = (model: THREE.Group) => {
     const skins = new Set<string>();
-    
+
     model.traverse((child) => {
       if (child instanceof THREE.Mesh && child.material) {
         if (Array.isArray(child.material)) {
@@ -245,12 +235,12 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
   };
 
   // Helper function to load model files (now only handles GLTF/GLB)
-  const loadModelFile = (url: string, ext?: string): Promise<THREE.Group> => {
+  const loadModelFile = (url: string): Promise<THREE.Group> => {
     return new Promise((resolve, reject) => {
       const loader = new GLTFLoader();
-      loader.load(url, 
-        (gltf) => resolve(gltf.scene), 
-        undefined, 
+      loader.load(url,
+        (gltf) => resolve(gltf.scene),
+        undefined,
         (error) => reject(error)
       );
     });
@@ -271,13 +261,13 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
   // Show error indicator
   const showErrorCube = () => {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardMaterial({ 
+    const material = new THREE.MeshStandardMaterial({
       color: 0xff0000,
       wireframe: true
     });
     const cube = new THREE.Mesh(geometry, material);
     sceneRef.current.add(cube);
-    currentModelRef.current = cube;
+    currentModelRef.current?.add(cube);
   };
 
   // Toggle edit mode
@@ -295,16 +285,16 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
   // Update material settings when changed
   const updateMaterialSettings = useCallback(() => {
     if (!currentModelRef.current) return;
-    
+
     currentModelRef.current.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         // Apply wireframe setting
         child.material.wireframe = showWireframe;
-        
+
         // Handle material type change
         if (child.material.type.toLowerCase() !== materialType) {
           let newMaterial;
-          
+
           switch (materialType) {
             case 'phong':
               newMaterial = new THREE.MeshPhongMaterial();
@@ -318,15 +308,15 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
             default:
               newMaterial = new THREE.MeshStandardMaterial();
           }
-          
+
           // Copy properties from old material
           newMaterial.copy(child.material);
           child.material = newMaterial;
         }
-        
+
         // Apply color and other properties
-        if (child.material instanceof THREE.MeshStandardMaterial || 
-            child.material instanceof THREE.MeshPhysicalMaterial) {
+        if (child.material instanceof THREE.MeshStandardMaterial ||
+          child.material instanceof THREE.MeshPhysicalMaterial) {
           child.material.color.set(materialColor);
           child.material.metalness = metalness;
           child.material.roughness = roughness;
@@ -345,7 +335,7 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
   // Handle skin change
   const changeSkin = useCallback((skinName: string) => {
     if (!currentModelRef.current) return;
-    
+
     currentModelRef.current.traverse((child) => {
       if (child instanceof THREE.Mesh && child.material) {
         if (Array.isArray(child.material)) {
@@ -363,11 +353,10 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
         }
       }
     });
-    
+
     setCurrentSkin(skinName);
   }, []);
 
-  // Handle helpers visibility
   useEffect(() => {
     sceneRef.current.children.forEach(child => {
       if (child instanceof THREE.GridHelper || child instanceof THREE.AxesHelper) {
@@ -376,15 +365,14 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
     });
   }, [showHelpers]);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       if (!mountRef.current || !rendererRef.current || !cameraRef.current) return;
-      
+
       cameraRef.current.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(
-        mountRef.current.clientWidth, 
+        mountRef.current.clientWidth,
         mountRef.current.clientHeight
       );
     };
@@ -393,7 +381,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Handle file import
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -402,7 +389,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
       setLoading(true);
       setError(null);
 
-      // Clear previous model
       if (currentModelRef.current) {
         sceneRef.current.remove(currentModelRef.current);
         currentModelRef.current = null;
@@ -411,7 +397,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
       let modelBlob: Blob;
       const fileExt = file.name.split('.').pop()?.toLowerCase();
 
-      // Jika bukan GLB/GLTF, konversi ke GLB terlebih dahulu
       if (fileExt !== 'glb' && fileExt !== 'gltf') {
         setConverting(true);
         try {
@@ -424,21 +409,17 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
       }
 
       const objectUrl = URL.createObjectURL(modelBlob);
-      const model = await loadModelFile(objectUrl, 'glb');
+      const model = await loadModelFile(objectUrl);
       URL.revokeObjectURL(objectUrl);
 
-      // Center and scale model
       centerAndScaleModel(model);
 
-      // Add to scene
       sceneRef.current.add(model);
       currentModelRef.current = model;
 
-      // Update materials
       updateMaterialSettings();
       loadAvailableSkins(model);
 
-      // Notify parent component with the converted GLB file
       if (onModelImport) {
         const convertedFile = new File([modelBlob], `${file.name.split('.')[0]}.glb`, {
           type: 'model/gltf-binary'
@@ -454,7 +435,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
     }
   };
 
-  // Export model to GLTF
   const exportModel = () => {
     if (!currentModelRef.current) return;
 
@@ -484,10 +464,8 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
 
   return (
     <div className="relative h-full w-full bg-gray-800">
-      {/* Canvas container */}
       <div ref={mountRef} className="h-full w-full" />
-      
-      {/* Hidden file input for import */}
+
       <input
         type="file"
         ref={fileInputRef}
@@ -495,15 +473,13 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
         accept=".gltf,.glb,.fbx,.obj,.dae,.stl,.ply,.3ds"
         className="hidden"
       />
-      
-      {/* Loading indicator */}
+
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="text-white text-lg">Loading model...</div>
         </div>
       )}
 
-      {/* Converting indicator */}
       {converting && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="text-white text-lg">
@@ -513,7 +489,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
         </div>
       )}
 
-      {/* Error message */}
       {error && (
         <div className="absolute bottom-4 left-4 bg-red-500 text-white p-3 rounded-lg max-w-md z-50">
           <div className="font-bold mb-1">Error</div>
@@ -524,39 +499,35 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
         </div>
       )}
 
-      {/* Main controls panel */}
       <div className="absolute top-4 right-4 bg-gray-800/80 backdrop-blur-sm p-3 rounded-lg shadow-lg z-50">
         <div className="space-y-3">
           {/* Transform controls */}
           <div className="flex space-x-2">
-            <button 
+            <button
               onClick={() => setEditMode(editMode === 'translate' ? null : 'translate')}
-              className={`px-3 py-1 rounded-md text-sm ${
-                editMode === 'translate' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'
-              }`}
+              className={`px-3 py-1 rounded-md text-sm ${editMode === 'translate' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'
+                }`}
             >
               Move
             </button>
-            <button 
+            <button
               onClick={() => setEditMode(editMode === 'rotate' ? null : 'rotate')}
-              className={`px-3 py-1 rounded-md text-sm ${
-                editMode === 'rotate' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'
-              }`}
+              className={`px-3 py-1 rounded-md text-sm ${editMode === 'rotate' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'
+                }`}
             >
               Rotate
             </button>
-            <button 
+            <button
               onClick={() => setEditMode(editMode === 'scale' ? null : 'scale')}
-              className={`px-3 py-1 rounded-md text-sm ${
-                editMode === 'scale' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'
-              }`}
+              className={`px-3 py-1 rounded-md text-sm ${editMode === 'scale' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'
+                }`}
             >
               Scale
             </button>
           </div>
 
           {/* Import button */}
-          <button 
+          <button
             onClick={() => fileInputRef.current?.click()}
             className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm"
           >
@@ -568,8 +539,8 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-300">Wireframe</span>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={showWireframe}
                   onChange={(e) => setShowWireframe(e.target.checked)}
                   className="sr-only peer"
@@ -581,8 +552,8 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-300">Helpers</span>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={showHelpers}
                   onChange={(e) => setShowHelpers(e.target.checked)}
                   className="sr-only peer"
@@ -607,8 +578,8 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-300">Color</span>
-              <input 
-                type="color" 
+              <input
+                type="color"
                 value={materialColor}
                 onChange={(e) => setMaterialColor(e.target.value)}
                 className="w-6 h-6 cursor-pointer"
@@ -672,7 +643,7 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
           </div>
 
           {/* Export button */}
-          <button 
+          <button
             onClick={exportModel}
             className="w-full mt-3 px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded-md text-sm"
           >

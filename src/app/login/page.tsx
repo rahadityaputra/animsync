@@ -1,13 +1,12 @@
 import Link from 'next/link';
-import AuthLayout from '../components/auth/AuthLayout';
-import LoginForm from '../components/auth/LoginForm.';
-import SocialLogin from '../components/auth/SocialLogin.';
-
+import AuthLayout from '@/components/Auth/AuthLayout';
+import LoginForm from '@/components/Auth/LoginForm.';
+import SocialLogin from '@/components/Auth/SocialLogin.';
 
 export default function LoginPage() {
   return (
-    <AuthLayout 
-      title="Welcome Back" 
+    <AuthLayout
+      title="Welcome Back"
       subtitle={
         <>
           Today is a new day. Its your day. You shape it.<br />
@@ -18,7 +17,7 @@ export default function LoginPage() {
     >
       <LoginForm />
       <SocialLogin />
-      
+
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-600">
           Dont you have an account?{' '}

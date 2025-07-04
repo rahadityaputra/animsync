@@ -3,13 +3,12 @@
 import { useUser } from "@/app/providers";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import Header from "../components/dashboard/Header";
-import ProtectedRoute from "../components/ProtectedRoute";
-import ActivityList from "../components/dashboard/ActivityList";
-import ProjectList from "../components/dashboard/ProjectList";
-import RenderHistory from "../components/dashboard/RenderHistory";
-import RenderQueue from "../components/dashboard/RenderQueue";
-import { BasicRenderTask } from "../components/dashboard/types";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import ProjectList from "@/components/Dashboard/ProjectList";
+import ActivityList from "@/components/Dashboard/ActivityList";
+import RenderQueue from "@/components/Dashboard/RenderQueue";
+import RenderHistory from "@/components/Dashboard/RenderHistory";
+import Header from "@/components/Dashboard/Header";
 
 interface BasicProject {
   id: string;

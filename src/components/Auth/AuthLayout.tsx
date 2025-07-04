@@ -1,5 +1,4 @@
 import Image from "next/image";
-// Components/auth/AuthLayout.tsx
 interface AuthLayoutProps {
   children: React.ReactNode;
   title: string;
@@ -15,11 +14,9 @@ const AuthLayout = ({
 }: AuthLayoutProps) => {
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* Kolom Kiri (Form) */}
       <div
-        className={`flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${
-          showTwoColumns ? "w-1/2" : "w-full"
-        }`}
+        className={`flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${showTwoColumns ? "w-1/2" : "w-full"
+          }`}
       >
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">

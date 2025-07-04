@@ -1,12 +1,10 @@
-// app/projecttabs/[projectId]/page.tsx
 "use client";
-import { use } from "react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import ProjectDetail from "@/app/components/projecttabs/ProjectDetail";
-import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
-import { useRouter } from "next/navigation";
-import ErrorBoundary from "@/app/components/ErrorBoundary";
+import { useParams, useRouter } from "next/navigation";
+import LoadingSpinner from "@/components/Ui/LoadingSpinner";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import ProjectDetail from "@/components/ProjectTab/ProjectDetail";
 
 interface Project {
   id: string;
@@ -15,20 +13,23 @@ interface Project {
   file_url?: string;
   description?: string;
   user_id?: string;
+  status?: string;
   created_at?: string;
 }
 
-export default function ProjectPage({
-  params,
-}: {
-  params: { projectId: string };
-}) {
-  const [project, setProject] = useState<Project | null>(null);
+
+
+export default function ProjectPage() {
+  const [project, setProject] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
   const router = useRouter();
-  const { projectId } = use(params);
+  const params = useParams();
+  const projectId: any = params?.projectId
+  console.log([projectId]);
+
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,7 +37,6 @@ export default function ProjectPage({
         setLoading(true);
         setError(null);
 
-        // Check auth first
         const {
           data: { user },
           error: authError,
@@ -46,16 +46,17 @@ export default function ProjectPage({
           return;
         }
 
-        // Then fetch project
         const { data, error: fetchError } = await supabase
           .from("projects")
           .select("*")
-          .eq("id", params.projectId)
+          .eq("id", projectId)
           .eq("user_id", user.id)
           .single();
 
         if (fetchError) throw fetchError;
         if (!data) throw new Error("Project not found");
+        console.log(data);
+
 
         setProject(data);
       } catch (err) {
@@ -68,7 +69,7 @@ export default function ProjectPage({
     };
 
     fetchData();
-  }, [params.projectId, router, supabase]);
+  }, [projectId, router, supabase]);
 
   if (loading) return <LoadingSpinner fullPage />;
 

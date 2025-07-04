@@ -156,12 +156,12 @@ export default function ProjectList() {
           projects.map((p) =>
             p.id === editingProject.id
               ? {
-                  ...p,
-                  name: data.name,
-                  description: data.description,
-                  file_url: data.file_url,
-                  state: data.state,
-                }
+                ...p,
+                name: data.name,
+                description: data.description,
+                file_url: data.file_url,
+                state: data.state,
+              }
               : p
           )
         );
@@ -377,8 +377,8 @@ export default function ProjectList() {
                     ? "Menyimpan..."
                     : "Membuat..."
                   : editingProject
-                  ? "Update Proyek"
-                  : "Buat Proyek"}
+                    ? "Update Proyek"
+                    : "Buat Proyek"}
               </button>
             </div>
           </div>
@@ -442,13 +442,12 @@ export default function ProjectList() {
                     {project.name}
                   </h3>
                   <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      project.state === "completed"
+                    className={`px-2 py-1 text-xs rounded-full ${project.state === "completed"
                         ? "bg-green-100 text-green-800"
                         : project.state === "rendering"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
                   >
                     {project.state}
                   </span>
