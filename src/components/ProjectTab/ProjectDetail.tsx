@@ -5,35 +5,16 @@ import { ModelEditor } from "../Editor/ModelEditor";
 import { SceneList } from "./SceneList";
 import { CommentSection } from "./CommentSection";
 import { CollaboratorList } from "./CollaboratorList";
+import Project from "@/types/Project";
+import Collaborator from "@/types/Collaborator";
+import Scene from "@/types/Scene";
 
-type Project = {
-  id: string;
-  name: string;
-  status: "pending" | "rendering" | "completed";
-  file_url?: string;
-  description?: string;
-  created_at?: string;
-  scenes?: Scene[];
-  collaborators?: Collaborator[]
-};
 
-type Scene = {
-  id: string;
-  name: string;
-};
-
-type Collaborator = {
-  id: string;
-  name: string;
-  email: string;
-  status: "online" | "offline";
-  avatar?: string;
-};
-
-export default function ProjectDetail({ project }: { project: Project }) {
+function ProjectDetail({ project }: { project: Project }) {
   const [showProjectTabs, setShowProjectTabs] = useState(false);
   const [showToolsPanel, setShowToolsPanel] = useState(true);
   const router = useRouter();
+
   const [scenes, setScenes] = useState<Scene[]>(
     project.scenes || [
       { id: "1", name: "Scene 1" },
@@ -284,3 +265,5 @@ export default function ProjectDetail({ project }: { project: Project }) {
     </div>
   );
 }
+
+export default ProjectDetail;
