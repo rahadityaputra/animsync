@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LoginForm, AuthLayout, SocialLogin } from '@/features/auth';
+import { SignInForm, AuthLayout, SocialLogin } from '@/features/auth';
 
 const SignInPage = () => {
   return (
@@ -13,7 +13,7 @@ const SignInPage = () => {
       }
       showTwoColumns={true}
     >
-      <LoginForm />
+      <SignInForm />
       <SocialLogin />
 
       <div className="mt-6 text-center">

@@ -26,3 +26,10 @@ export type Activity = {
   created_at: string;
 };
 
+type RenderTask = {
+  id: string;
+  name: string;
+  progress: number;
+  project_id: string;
+  status: 'queued' | 'rendering' | 'completed' | 'failed';
+};

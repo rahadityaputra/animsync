@@ -1,4 +1,4 @@
-import { AuthLayout, RegisterForm, SocialLogin } from '@/features/auth';
+import { AuthLayout, SignUpForm, SocialLogin } from '@/features/auth';
 import Link from 'next/link';
 
 const SignUpPage = () => {
@@ -13,7 +13,7 @@ const SignUpPage = () => {
       }
       showTwoColumns={true}
     >
-      <RegisterForm />
+      <SignUpForm />
       <SocialLogin />
 
       <div className="mt-6 text-center">

@@ -2,15 +2,11 @@
 
 import { useEffect, useState } from "react";
 import router from "next/router";
-import Project from "@/types/Project";
-import { getContentType } from "@/lib/helper/helper";
-import createClient from "@/features/auth/lib/supabase/client";
+import { AddProjectFormValues } from "@/features/dashboard/lib/validationSchema";
+import getContentType from "@/features/dashboard/lib/getContentType";
+import Project from "@/features/editor/types/Project";
+import createClient from "../../../../utils/supabase/client";
 
-type NewProject = {
-  name: string,
-  description: string,
-  file: File
-}
 
 const useProjectManagement = () => {
 
@@ -23,6 +19,7 @@ const useProjectManagement = () => {
   const fetchUserProjects = async () => {
     try {
       setLoading(true);
+      setError(null)
       const {
         data: { user },
         error: authError,
@@ -51,32 +48,21 @@ const useProjectManagement = () => {
 
       setProjects(typedProjects);
 
-    } catch (err) {
-      console.error("Error fetching projects:", err);
-      if (err instanceof Error) {
-        alert(`Error: ${err.message}`);
-      } else {
-        alert("An unknown error occurred");
-      }
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setLoading(false);
     }
   }
 
-
   useEffect(() => {
     fetchUserProjects();
   }, [])
 
-
-  const addNewProject = async (newProject: NewProject) => {
-    if (!newProject.name || (!newProject.file)) return;
-    // if (!newProject.name || (!newProject.file && !editingProject)) return;
-
-    // setIsSubmitting(true);
-    // setIsUploading(true);
-    // setUploadProgress(0);
+  const addNewProject = async (newProjectData: AddProjectFormValues) => {
     try {
+      setLoading(true)
+      setError(null)
       const {
         data: { user },
         error: authError,
@@ -86,14 +72,14 @@ const useProjectManagement = () => {
 
       let fileUrl = editingProject?.file_url;
 
-      if (newProject.file) {
-        const fileExt = newProject.file.name.split(".").pop();
+      if (newProjectData.projectFile) {
+        const fileExt = newProjectData.projectFile[0].name.split(".").pop();
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = `projects/${user.id}/${fileName}`; // Path dengan user ID
 
         const { error: uploadError } = await supabase.storage
           .from("3d-models")
-          .upload(filePath, newProject.file, {
+          .upload(filePath, newProjectData.projectFile[0], {
             contentType: getContentType(fileExt),
             cacheControl: "3600",
             upsert: false,
@@ -116,8 +102,8 @@ const useProjectManagement = () => {
         const { data, error } = await supabase
           .from("projects")
           .update({
-            name: newProject.name,
-            description: newProject.description,
+            name: newProjectData.projectName,
+            description: newProjectData.projectDescription,
             ...(fileUrl ? { file_url: fileUrl } : {}),
           })
           .eq("id", editingProject.id)
@@ -149,8 +135,8 @@ const useProjectManagement = () => {
         const { data, error } = await supabase
           .from("projects")
           .insert({
-            name: newProject.name,
-            description: newProject.description,
+            name: newProjectData.projectName,
+            description: newProjectData.projectDescription,
             file_url: fileUrl,
             state: "pending",
             user_id: user.id,
@@ -192,22 +178,19 @@ const useProjectManagement = () => {
         }
       }
 
-      // resetForm();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error:", err);
-      alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      alert(`Error p: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setError(err.message)
     } finally {
-      // setIsSubmitting(false);
-      // setIsUploading(false);
+      setLoading(false)
     }
-
-
   }
-
 
   const getDetailProject = async (projectId: string): Promise<Project> => {
     try {
-
+      setLoading(true)
+      setError(null)
       const {
         data: { user },
         error: authError,
@@ -244,12 +227,14 @@ const useProjectManagement = () => {
       router.push("/dashboard");
       throw err
     } finally {
+      setLoading(false)
     }
   }
 
-
   const deleteProject = async (projectId: string) => {
     try {
+      setLoading(true)
+      setError(null)
       const project = projects.find((p) => p.id === projectId);
       if (project?.file_url) {
         const filePath = project.file_url.split("/").slice(3).join("/");
@@ -264,20 +249,16 @@ const useProjectManagement = () => {
       if (error) throw error;
 
       setProjects(projects.filter((p) => p.id !== projectId));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting project:", err);
+      setError(err.message)
+    } finally {
+      setLoading(false)
+
     }
   }
 
-
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //   };
-  //
-  //   fetchData();
-  // }, [projectId, router, supabase]);
-
   return { projects, error, loading, addNewProject, getDetailProject, deleteProject };
-
 }
+
 export default useProjectManagement;

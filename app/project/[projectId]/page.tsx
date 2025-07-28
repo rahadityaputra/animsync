@@ -1,13 +1,13 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import LoadingSpinner from "@/components/Ui/LoadingSpinner";
-import ProjectDetail from "@/components/ProjectTab/ProjectDetail";
+import LoadingSpinner from "@/shared/components/LoadingSpinner";
+import ProjectDetail from "@/features/project/components/ProjectDetail";
 
-import useProjectManagement from "@/hooks/useProjectManagement";
+import useProjectManagement from "@/features/project/hooks/useProjectManagement";
 import { useEffect, useState } from "react";
-import Project from "@/types/Project";
 import ErrorBoundary from "@/shared/components/ErrorBoundary";
+import Project from "@/features/editor/types/Project";
 
 const ProjectPage = () => {
   const router = useRouter();
@@ -22,9 +22,8 @@ const ProjectPage = () => {
       const project = await getDetailProject(projectId)
       setProject(project)
     }
-
     fetchDetailProject();
-  })
+  }, [])
 
   if (loading) return <LoadingSpinner fullPage />;
 

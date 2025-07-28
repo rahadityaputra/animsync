@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import useProjectManagement from "@/hooks/useProjectManagement";
+import useProjectManagement from "@/features/project/hooks/useProjectManagement";
 import AddProjectForm from "./AddProjectForm";
 import ProjectCard from "./ProjectCard";
 
@@ -18,7 +18,7 @@ const ProjectList = () => {
 
 
   const handleAddProject = async ({ name, file }: { name: string, file: File }) => {
-    addNewProject();
+    addNewProject({ name, file });
 
   };
 

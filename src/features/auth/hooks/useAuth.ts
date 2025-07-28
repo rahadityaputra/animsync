@@ -1,23 +1,23 @@
 "use client"
 
 import { useRouter } from "next/navigation";
-import createClient from "../lib/supabase/client";
 import { useState } from "react";
-import { SignInFormValues } from "../lib/validationSchema";
+import { ForgotPasswordFormValues, ResetPassworsFormValues, SignInFormValues, SignUpFormValues } from "../lib/validationSchema";
+import createClient from "../../../../utils/supabase/client";
 
 const useAuth = () => {
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [registerSuccess, setRegisterSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [signUpSuccess, setSignUpSuccess] = useState(false);
   const router = useRouter();
-  // from client
   const supabase = createClient();
 
-  const signIn = async (data: SignInFormValues) => {
+  const signIn = async (signInData: SignInFormValues) => {
     try {
-      const email = data.get("email") as string;
-      const password = data.get("password") as string;
-      const rememberMe = data.get("remember-me") === "on";
+      setLoading(true);
+      setError(null);
+      const { email, password, rememberMe } = signInData;
+      console.log(rememberMe);
 
       const { data, error: authError } = await supabase.auth.signInWithPassword(
         {
@@ -27,17 +27,18 @@ const useAuth = () => {
       );
 
       if (authError) throw authError;
+      console.log("session", data.session);
 
       if (rememberMe && data.session) {
         const { error: cookieError } = await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         });
+        console.log(cookieError);
         if (cookieError) throw cookieError;
       }
 
 
-      console.log(data);
 
       if (data.user) {
         await supabase
@@ -46,76 +47,63 @@ const useAuth = () => {
           .eq("id", data.user.id);
       }
 
-      setTimeout(() => {
-        router.push("/dashboard");
-        router.refresh();
-      }, 100);
+      router.push("/dashboard");
+      router.refresh();
 
     } catch (err) {
       let errorMessage = "Login failed. Please try again !.";
-
       if (err instanceof Error) {
         if (err.message.includes("Invalid login credentials")) {
-          errorMessage = "Email atau password salah.";
+          errorMessage = "Incorrect email or password.";
         } else if (err.message.includes("Email not confirmed")) {
-          errorMessage = "Email belum dikonfirmasi. Cek inbox Anda.";
+          errorMessage = "Email not confirmed. Please check your inbox.";
         } else if (err.message.includes("Too many requests")) {
-          errorMessage = "Terlalu banyak percobaan. Tunggu beberapa saat.";
+          errorMessage = "Too many attempts. Please wait a moment.";
         } else {
           errorMessage = err.message;
         }
       }
-
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   }
 
-
-  const signUp = async (formData: FormData) => {
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
-
-    if (password !== confirmPassword) {
-      setError("Password tidak cocok");
-      setLoading(false);
-      return;
-    }
+  const signUp = async (signUpData: SignUpFormValues) => {
+    const { name, email, password } = signUpData;
 
     try {
+      setLoading(true);
+      setError(null);
+
       const { data: existingUser, error: checkUserError } = await supabase
         .from("users")
         .select("id")
         .eq("email", email)
-        .maybeSingle(); // <--- INI PERUBAHANNYA
+        .maybeSingle();
 
       if (checkUserError) {
         console.error("Error checking existing user (maybeSingle):", checkUserError);
-        throw new Error(checkUserError.message || "Gagal memeriksa email.");
+        throw new Error(checkUserError.message || "Failed to check email availability.");
       }
 
-      if (existingUser) { // Jika existingUser TIDAK null, berarti email sudah ada
-        throw new Error("Email sudah terdaftar. Silakan gunakan email lain atau login.");
+      if (existingUser) {
+        throw new Error("Email is already registered. Please use a different email or sign in.");
       }
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: name }, // Menyimpan nama lengkap sebagai metadata user Auth
-          emailRedirectTo: `${window.location.origin}/auth/callback`, // URL redirect setelah verifikasi email
+          data: { full_name: name },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (authError) {
-        // Log error dari Supabase Auth secara detail
         console.error("Supabase Auth SignUp Error (Full Object):", authError);
-        // Terkadang pesan error dari Supabase bisa jadi 'User already registered'
         if (authError.message.includes("already registered")) {
-          throw new Error("Email sudah terdaftar di sistem otentikasi.");
+          throw new Error("Email is already registered in the authentication system.");
         }
         throw authError;
       }
@@ -128,37 +116,34 @@ const useAuth = () => {
 
       if (authData.user) {
         const { error: dbError } = await supabase.from("users").insert({
-          id: authData.user.id, // ID dari Supabase Auth
+          id: authData.user.id,
           email: authData.user.email,
-          username: name.toLowerCase().replace(/\s+/g, "_"), // Buat username dari nama
+          username: name.toLowerCase().replace(/\s+/g, "_"), // Ensures username is lowercase and uses underscores
           full_name: name,
           created_at: new Date().toISOString(),
-          // Atur email_confirmed_at berdasarkan status verifikasi
           email_confirmed_at: requiresEmailConfirmation
-            ? null // Belum dikonfirmasi
-            : new Date().toISOString(), // Langsung dikonfirmasi
-          last_sign_in_at: null, // *** Asumsi ini NOT NULL di DB Anda ***
+            ? null
+            : new Date().toISOString(),
+          last_sign_in_at: null,
         });
 
         if (dbError) {
-          // LOG DETAIL ERROR DARI DATABASE DI SINI
           console.error("Supabase DB Insert Error (Full Object):", dbError);
-          // Tambahkan penanganan untuk error unique constraint jika ada
-          if (dbError.code === '23505') { // PostgreSQL unique violation error code
-            throw new Error("Username atau email sudah digunakan (konflik database).");
+
+          // Check for specific database unique constraint error code (e.g., username/email conflict)
+          if (dbError.code === '23505') {
+            throw new Error("Username or email is already in use (database conflict).");
           }
-          // Pastikan melempar error agar ditangkap di blok catch utama
-          throw dbError;
+          throw dbError; // Re-throw other database errors
         }
       }
 
-      // 5. Handle redirect berdasarkan konfirmasi email
+      // --- Handle post-signup actions (email confirmation or auto sign-in) ---
       if (requiresEmailConfirmation) {
-        setRegisterSuccess(true); // Tampilkan pesan sukses verifikasi
-        setTimeout(() => router.push("/verify-email"), 1500); // Arahkan ke halaman verifikasi
+        setSignUpSuccess(true); // Assuming you have this state
+        setTimeout(() => router.push("/verify-email"), 1500); // Redirect to email verification page
       } else {
-        // Langsung login jika tidak perlu verifikasi email
-        // Ini jarang terjadi kecuali Anda mematikan "Confirm email" di pengaturan Supabase Auth
+        // If no email confirmation is needed, try to sign the user in automatically
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -166,45 +151,94 @@ const useAuth = () => {
 
         if (signInError) {
           console.error("Supabase SignIn After Register Error (Full Object):", signInError);
-          setError("Registrasi berhasil, tapi gagal otomatis masuk. Silakan coba login.");
+          setError("Registration successful, but failed to automatically sign in. Please try to sign in manually.");
         } else {
-          router.push("/dashboard"); // Arahkan ke dashboard jika berhasil masuk
+          router.push("/dashboard"); // Redirect to dashboard on successful auto sign-in
         }
       }
 
-    } catch (err: any) { // Menggunakan 'any' untuk err agar lebih fleksibel dalam logging
-
-      let errorMessage = "Registrasi gagal. Silakan coba lagi."; // Default error message
+    } catch (err: any) {
+      let errorMessage = "Registration failed. Please try again.";
 
       if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
         errorMessage = err.message;
       } else if (typeof err === 'string') {
-        errorMessage = err; // Jika error adalah string sederhana
+        errorMessage = err;
       }
 
-      if (errorMessage.includes("already registered") || errorMessage.includes("Email sudah terdaftar")) {
-        errorMessage = "Email sudah terdaftar. Silakan gunakan email lain.";
+      if (errorMessage.includes("already registered") || errorMessage.includes("Email is already registered")) {
+        errorMessage = "This email is already registered. Please use a different email.";
       } else if (errorMessage.includes("Password should be at least 6 characters")) {
-        errorMessage = "Password minimal harus 6 karakter.";
-      } else if (errorMessage.includes("duplicate key value") || errorMessage.includes("Username atau email sudah digunakan")) {
-        errorMessage = "Email atau Username sudah terdaftar.";
+        errorMessage = "Password must be at least 6 characters long.";
+      } else if (errorMessage.includes("duplicate key value") || errorMessage.includes("Username or email is already in use")) {
+        errorMessage = "Email or username is already taken.";
       } else if (errorMessage.includes("Failed to fetch")) {
-        errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
+        errorMessage = "Could not connect to the server. Please check your internet connection.";
       } else if (errorMessage.includes("Network Error")) {
-        errorMessage = "Terjadi masalah jaringan. Silakan coba lagi.";
+        errorMessage = "A network error occurred. Please try again.";
       }
-
-      setError(errorMessage);
+      setError(errorMessage); // Set the user-facing error message
     } finally {
-      setLoading(false);
+      setLoading(false); // Always set loading to false
     }
-  }
+  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
     router.push('signin');
   }
 
-  return { loading, error, signIn, signUp, signOut, registerSuccess }
+  const forgotPassword = async (data: ForgotPasswordFormValues) => {
+    const { email } = data;
+    try {
+      setLoading(true);
+      setError(null)
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password?token=TOKEN&type=recovery`,
+      });
+
+      if (error) {
+        throw new Error(
+          error.message.includes("user not found")
+            ? "Email is not registered"
+            : error.message
+        );
+      }
+    } catch (error: any) {
+      setError(error.message)
+
+    } finally {
+      setLoading(false)
+    }
+
+  }
+
+  const resetPassword = async (data: ResetPassworsFormValues) => {
+    const { newPassword } = data;
+    try {
+      setLoading(true);
+      setError(null)
+
+      const { error: resetError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (resetError) throw resetError;
+
+      setTimeout(() => router.push("/signin"), 2000);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message.includes("invalid token")
+            ? "Link reset password tidak valid atau kadaluarsa"
+            : err.message
+          : "Gagal reset password"
+      );
+    } finally {
+      setLoading(false);
+    }
+
+  }
+  return { loading, error, signIn, signUp, signOut, signUpSuccess, forgotPassword, resetPassword }
 }
 export default useAuth;

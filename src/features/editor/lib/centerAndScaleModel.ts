@@ -11,18 +11,5 @@ const centerAndScaleModel = (model: THREE.Group) => {
   model.scale.set(scale, scale, scale);
 };
 
-const loadModelFile = (url: string): Promise<THREE.Group> => {
-  return new Promise((resolve, reject) => {
-    const loader = new GLTFLoader();
-    loader.load(url,
-      (gltf) => resolve(gltf.scene),
-      undefined,
-      (error) => reject(error)
-    );
-  });
-};
 
-export {
-  centerAndScaleModel,
-  loadModelFile
-}
+export default centerAndScaleModel;

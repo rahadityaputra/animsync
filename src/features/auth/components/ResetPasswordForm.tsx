@@ -1,99 +1,52 @@
 "use client";
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import createClient from "../lib/supabase/client";
+
+import { useSearchParams } from "next/navigation";
 import Button from "@/shared/components/Button";
 import FormInput from "@/shared/components/FormInput";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ResetPassworsFormValues, ResetPassworsSchema } from "../lib/validationSchema";
+import useAuth from "../hooks/useAuth";
 
 const ResetPasswordForm = () => {
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
   const searchParams = useSearchParams();
+  const { resetPassword, loading, error } = useAuth();
   const token = searchParams?.get("token"); // Ambil token dari URL
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!token) {
-      setError("Token tidak valid!");
-      return;
+  const { register, formState: { errors: validationErrors }, handleSubmit } = useForm({
+    resolver: zodResolver(ResetPassworsSchema),
+    defaultValues: {
+      newPassword: "",
+      confirmNewPassword: "",
     }
-    setError("");
-    setSuccess(false);
-    setLoading(true);
+  })
 
-    const formData = new FormData(e.currentTarget);
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
+  if (!token) throw new Error("Token tidak valid");
 
-    try {
-      // Validasi password
-      if (password !== confirmPassword) {
-        throw new Error("Password tidak cocok");
-      }
 
-      if (password.length < 8) {
-        throw new Error("Password minimal 8 karakter");
-      }
-
-      // Dapatkan access_token dari URL
-      const token = searchParams?.get("token");
-      if (!token) throw new Error("Token tidak valid");
-
-      // Reset password
-      const { error: resetError } = await supabase.auth.updateUser({
-        password,
-      });
-
-      if (resetError) throw resetError;
-
-      setSuccess(true);
-      setTimeout(() => router.push("/login"), 2000);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message.includes("invalid token")
-            ? "Link reset password tidak valid atau kadaluarsa"
-            : err.message
-          : "Gagal reset password"
-      );
-    } finally {
-      setLoading(false);
-    }
+  const onSubmit = async (data: ResetPassworsFormValues) => {
+    resetPassword(data)
   };
 
   return (
-    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-      {error && (
-        <div className="text-red-500 text-sm text-center mb-4">{error}</div>
-      )}
-      {success && (
-        <div className="text-green-500 text-sm text-center mb-4">
-          Password berhasil direset! Anda akan dialihkan ke halaman login.
-        </div>
-      )}
+    <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
 
       <div className="rounded-md shadow-sm space-y-4">
         <FormInput
           id="password"
-          name="password"
-          label="Password Baru"
+          label="New Password"
           type="password"
-          placeholder="Minimal 8 karakter"
-          required
-          minLength={8}
+          placeholder="Enter new password"
+          {...register('newPassword')}
+          errorMessage={validationErrors.newPassword?.message}
         />
 
         <FormInput
           id="confirmPassword"
-          name="confirmPassword"
-          label="Konfirmasi Password"
+          label="New Password Confirmation"
           type="password"
-          placeholder="Ketik ulang password"
-          required
-          minLength={8}
+          placeholder="Enter confitrm new password"
+          {...register('confirmNewPassword')}
+          errorMessage={validationErrors.confirmNewPassword?.message}
         />
       </div>
 

@@ -16,8 +16,14 @@ const useSetupEditor = ({ mountRef, showHelpers }: useSetupEditorProps) => {
   const orbitControlsRef = useRef<OrbitControls>(null);
   const transformControlsRef = useRef<TransformControls>(null);
 
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    powerPreference: "high-performance"
+  });
+
   useEffect(() => {
     if (!mountRef.current) return;
+
 
     const scene = sceneRef.current;
     scene.background = new THREE.Color(0x222222);
@@ -32,10 +38,7 @@ const useSetupEditor = ({ mountRef, showHelpers }: useSetupEditorProps) => {
     camera.position.z = 5;
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: "high-performance"
-    });
+
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1;
     renderer.setPixelRatio(window.devicePixelRatio);

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import createClient from "@/features/auth/lib/supabase/client";
+import createClient from "../../../../utils/supabase/client";
 
 type UserContextType = {
   user: User | null;
@@ -35,6 +35,9 @@ const UserProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (!mounted) return;
+
+        console.log(error);
+
 
         if (error) throw error;
 

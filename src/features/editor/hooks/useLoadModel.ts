@@ -1,8 +1,9 @@
 "use client"
-import createClient from "@/features/auth/lib/supabase/client";
-import { centerAndScaleModel, loadModelFile } from "@/lib/helper/helperEditor";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import createClient from "../../../../utils/supabase/client";
+import centerAndScaleModel from "../lib/centerAndScaleModel";
+import loadModelFile from "../lib/helper/helperEditor";
 
 type useLoadModelProps = {
   modelUrl: string | undefined,

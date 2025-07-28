@@ -1,11 +1,16 @@
 "use client";
+
 import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { convertToGLB } from "@/lib/helper/helper";
-import useSetupEditor from "@/hooks/useSetupEditor";
-import useLoadModel from "@/hooks/useLoadModel";
-import { centerAndScaleModel, loadModelFile } from "@/lib/helper/helperEditor";
+import loadModelFile from "../lib/helper/helperEditor";
+import centerAndScaleModel from "../lib/centerAndScaleModel";
+import convertToGLB from "../lib/convertToGLB";
+import useSetupEditor from "../hooks/useSetupEditor";
+import useLoadModel from "../hooks/useLoadModel";
+import useRayCaster from "../hooks/useRayCaster";
+import useOutline from "../hooks/useOutline";
+import { RGBELoader } from "three/examples/jsm/Addons.js";
 
 type ModelEditorProps = {
   modelUrl: string | undefined;
@@ -16,17 +21,44 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<'translate' | 'rotate' | 'scale' | null>(null);
-  const [showWireframe, setShowWireframe] = useState(false);
-  const [showHelpers, setShowHelpers] = useState(true);
+  const [showWireframe, setShowWireframe] = useState<boolean>(false);
+  const [showHelpers, setShowHelpers] = useState<boolean>(true);
   const [availableSkins, setAvailableSkins] = useState<string[]>([]);
+  console.log(mountRef);
 
   const { scene, camera, renderer, orbitControls, transformControls } = useSetupEditor({ mountRef, showHelpers });
   const { loading, currentModel, setCurrentModel, setCurrentModelNull, materialType, materialColor, metalness, updateMaterialSettings, loadAvailableSkins, roughness, envMapIntensity, currentSkin } = useLoadModel({ modelUrl, scene })
 
+  const { raycaster, getObjectsIntersected, mouse, setMousePosition, setRaycasterFromCamera} = useRayCaster();
+
+  // const {} = useOutline(renderer, camera, scene, new THREE.Vector2(window.innerWidth, window.innerHeight));
+
+
+  useEffect(() => {
+    if (!mountRef.current || !renderer || !camera) return;
+
+    mountRef.current.appendChild(renderer.domElement);
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+      orbitControls?.update();
+    });
+
+    // Load environment map
+    const rgbeLoader = new RGBELoader();
+    rgbeLoader.load('/hdr/royal_esplanade_1k.hdr', (texture) => {
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      scene.environment = texture;
+      scene.background = texture;
+    });
+
+    return () => {
+      mountRef.current?.removeChild(renderer.domElement);
+      renderer.dispose();
+    };
+  }, [mountRef, renderer, camera, scene]);
 
   useEffect(() => {
     if (!transformControls || !currentModel) return;
@@ -39,6 +71,44 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
     }
   }, [editMode]);
 
+  mountRef.current?.addEventListener('pointermove', (event) => {
+    setMousePosition(event.clientX, event.clientY);
+    // console.log("Mouse position set:", mouse);
+    if (orbitControls) {
+      orbitControls.enabled = !editMode;
+    }
+  });
+
+mountRef.current?.addEventListener('pointerdown', (event) => {
+    setMousePosition(event.clientX, event.clientY);
+    if (orbitControls) {
+      orbitControls.enabled = !editMode;
+    }
+    if (!camera || !scene) return;
+    
+    setRaycasterFromCamera(camera);
+    
+    const intersects = getObjectsIntersected(scene.children);
+    if (intersects.length > 0) {
+      console.log("Intersected objects:", intersects);
+      const intersectedObject = intersects[0].object;
+      console.log("First intersected object:", intersectedObject);
+      if (editMode) {
+        transformControls?.attach(intersectedObject);
+      }
+      
+      intersectedObject.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.material.wireframe = showWireframe;
+          child.material.needsUpdate = true;
+          child.material.transparent = true;
+          child.material.color.set("#ffffff"); // Set to white for visibility
+          child.material.metalness = metalness;
+          child.material.opacity = 0.8; // Adjust opacity as needed
+        }
+      })
+    }
+  });
 
 
   useEffect(() => {
@@ -51,6 +121,8 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
 
   useEffect(() => {
     const handleResize = () => {
+      console.log(mountRef);
+
       if (!mountRef.current || !renderer || !camera) return;
 
       camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
@@ -115,7 +187,6 @@ export function ModelEditor({ modelUrl, onModelImport }: ModelEditorProps) {
       console.error("Error importing model:", err);
       setError(`Failed to import model: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
-      // setLoading(false);
     }
   };
 

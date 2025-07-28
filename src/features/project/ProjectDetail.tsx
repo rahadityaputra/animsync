@@ -1,13 +1,11 @@
 "use client"
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ModelEditor } from "../Editor/ModelEditor";
+import { ModelEditor } from "../../editor/components/ModelEditor";
 import { SceneList } from "./SceneList";
 import { CommentSection } from "./CommentSection";
 import { CollaboratorList } from "./CollaboratorList";
-import Project from "@/types/Project";
-import Collaborator from "@/types/Collaborator";
-import Scene from "@/types/Scene";
 
 
 function ProjectDetail({ project }: { project: Project }) {

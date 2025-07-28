@@ -1,7 +1,7 @@
 'use client';
 
-import createClient from '@/features/auth/lib/supabase/client';
 import { useState } from 'react';
+import createClient from '../../utils/supabase/client';
 
 export default function VerifyEmail() {
   const [email, setEmail] = useState('');
